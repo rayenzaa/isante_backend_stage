@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+generator prismaClassGenerator {
+  provider = "prisma-class-generator"
+  output   = "../src/generated/prisma-client"
+  dryRun   = false
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+enum Permission {
+  CREATE
+  UPDATE
+  READ
+  DELETE
+  ALL
+}
+enum TypeReservation {
+  DISTANCE
+  DOMICILE
+  CABINET
+}
+enum Status {
+  NVERIFIED
+  VERIFIED
+}
+enum TypeNotification {
+  DEFAULT
+  VALIDATION
+  RETURN
+}
+enum Role {
+  ADMIN
+  VISITEUR
+  ADHERENT
+  PS
+}
+model Utilisateur {
+  id         Int                    @id @default(autoincrement())
+  login String? @unique 
+  password String?
+  first_name String
+  last_name String  
+  email                 String                 @unique
+  phone Int?
+  phone2 Int?
+  adresse String
+  ville String?
+  dateCreation          DateTime               @default(now())
+  dateModification      DateTime               @updatedAt
+  ordonnances Ordonnance[]
+  role                  Role
+  reservationPs RendezVous[] @relation("AA")
+  reservationAdherent RendezVous[] @relation("RAA")
+  notificationPs Notification[] @relation("NotifierPS")
+  notificationAdherent Notification[] @relation("NotifierADHERENT")
+  status Status @default(NVERIFIED)
+  logs Log[]
+}
+model RendezVous {
+  id          Int            @id @default(autoincrement())
+  idAdhrent        Int
+  idPs       Int?
+  dateCreation          DateTime               @default(now())
+  dateModification      DateTime               @updatedAt
+  start_date DateTime
+  end_date DateTime
+  start_date_ps DateTime?
+  end_date_ps DateTime?
+  type TypeReservation
+  motif String
+  allergies String
+  problemeSante String
+  medicamentsEnCours String
+  validation Boolean @default(false)
+  annulation Boolean @default(false)
+  retour Boolean @default(false)
+  ps Utilisateur? @relation("AA",fields: [idPs], references: [id])
+  adherent Utilisateur? @relation("RAA",fields: [idAdhrent], references: [id])
+  notifications Notification[]
+}
+model Notification {
+  id          Int      @id @default(autoincrement())
+  type        TypeNotification
+  message     String
+  createdAt   DateTime @default(now())
+  reservation RendezVous @relation(fields: [reservationId], references: [id])
+  reservationId Int
+  adherent    Utilisateur @relation("NotifierADHERENT",fields: [adherentId], references: [id])
+  adherentId  Int
+  ps          Utilisateur? @relation("NotifierPS",fields: [psId], references: [id])
+  psId        Int?  
+}
+
+model Medicament {
+  id           Int                   @id @default(autoincrement())
+  CODE_PCT   Int               @unique
+  NOM_COMMERCIAL String
+  PRIX_PUBLIC            Float
+  TARIF_REFERENCE Float
+  CATEGORIE String
+  DCI String
+  AP String
+  ligneOrdonnance               LigneOrdonnance[]
+  dateCreation          DateTime               @default(now())
+  dateModification      DateTime               @updatedAt
+}            
+
+model Ordonnance {
+  id Int      @id @default(autoincrement())
+  idUtilisateur    Int
+  ligneOrdonnance      LigneOrdonnance[]
+  prixTotal Float? @default(0)
+  utilisateur Utilisateur @relation(fields: [idUtilisateur], references: [id])
+  dateCreation          DateTime?               @default(now())
+}
+model LigneOrdonnance {
+  id Int @id @default(autoincrement())
+  idOrdonnance Int
+  idMedicament Int
+  ordonnance Ordonnance @relation(fields: [idOrdonnance], references: [id], onDelete: Cascade)
+  medicament Medicament @relation(fields: [idMedicament],references: [id],onDelete: Cascade)
+  qte Int @default(0)
+  prixLigne Float
+}
+
+model Log {
+  idLog         Int         @id @default(autoincrement())
+  idUtilisateur Int
+  action        String
+  dateLog       DateTime    @default(now())
+  utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id],onDelete: Cascade)
+}
+
